@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PROTOTYPE · Artifact Home M0.3.0</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="proto-banner">
+    PROTOTYPE · M0.3.0 产物中心 IA · throwaway ·
+    问题：Home→画廊→预览 好用吗？
+  </div>
+  <div id="boot-hint">
+    <code>?variant=A|B|C</code>
+    · <b>A 画廊架</b> / <b>B 回来简报</b> / <b>C 制作台</b>
+    · 底栏或 ← → · 勿用 file://
+  </div>
+  <div id="route-bar" aria-live="polite"></div>
+  <div id="app"><p class="loading">Loading…</p></div>
+  <div id="switcher" hidden></div>
+
+  <script src="data.js"></script>
+  <script src="variants.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

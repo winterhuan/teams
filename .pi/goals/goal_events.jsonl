@@ -1,0 +1,4 @@
+{"type":"goal_created","goalId":"mrhyxs1q-bliu1z","objective":"use implement skill 实现上面 project-chat-closed-loop PRD 和所有 issues","sisyphus":false,"autoContinue":true,"at":"2026-07-12T15:49:01.117Z"}
+{"type":"task_list_set","goalId":"mrhyxs1q-bliu1z","taskCount":8,"blockCompletion":true,"at":"2026-07-12T15:50:48.386Z"}
+{"type":"task_complete","goalId":"mrhyxs1q-bliu1z","taskId":"issue-01","evidence":"public command→SQLite facts→grid/detail 完成；6 tests、strict typecheck、独立进程重启/幂等通过；证据 .evidence/issue-01/acceptance.md","at":"2026-07-12T16:18:52.416Z"}
+{"type":"task_complete","goalId":"mrhyxs1q-bliu1z","taskId":"issue-02","evidence":"真实 pi 0.80.6 + agnes-ai/agnes-2.0-flash 运行；Chat/HUD/session events 持久化；11 tests 通过；trace .evidence/issue-02-pi-agnes.md","at":"2026-07-12T16:30:25.190Z"}

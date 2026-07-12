@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PROTOTYPE · Board×Chat M0.4.0</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="proto-banner">
+    PROTOTYPE · M0.4.0 对话中心 · throwaway ·
+    一个对象(Issue)两张脸：Board 拉远 / Chat 拉近
+  </div>
+
+  <!-- 顶栏 -->
+  <header id="topbar">
+    <nav id="nav">
+      <button data-nav="board" class="nav-btn active">Board</button>
+      <button data-nav="projects" class="nav-btn">Projects</button>
+      <button data-nav="teams" class="nav-btn">Teams</button>
+    </nav>
+    <div id="topbar-right">
+      <span id="project-scope" title="Board 作用域">全部项目 ▾</span>
+      <button id="inbox-btn" title="需要你介入的事件">⌗ Inbox <span id="inbox-badge">0</span></button>
+    </div>
+  </header>
+
+  <div id="route-bar" aria-live="polite"></div>
+
+  <main id="app"><p class="loading">Loading…</p></main>
+
+  <!-- Inbox 抽屉 -->
+  <aside id="inbox-drawer" hidden></aside>
+  <div id="scrim" hidden></div>
+
+  <div id="boot-hint">
+    Board 是落地页 · 点任意卡 = 进入 Issue(Chat+活产物) · Esc 返回 · 勿用 file://
+  </div>
+
+  <script src="data.js"></script>
+  <script src="views.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

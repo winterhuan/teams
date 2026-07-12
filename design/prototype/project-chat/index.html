@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PROTOTYPE · Hearth · Chat / Run 解耦</title>
+  <link rel="stylesheet" href="styles.css?v=1783872000" />
+</head>
+<body>
+  <div id="proto-banner">
+    PROTOTYPE · Project Chat + 独立 Runs · Chat 连接 Workflow 但不包含 Workflow · throwaway · 勿用 file://
+  </div>
+
+  <!-- 四列外壳：Rail | Project 导航(+session 列表) | Chat | 产物预览 -->
+  <div id="shell">
+    <!-- 窄 Rail：Home + Project 切换 + New -->
+    <nav id="rail">
+      <button class="rail-home" data-home title="所有 Project">H</button>
+      <div class="rail-projects" id="rail-projects"></div>
+      <button class="rail-new" title="新 Project">+</button>
+      <div class="rail-foot">
+        <button class="rail-inbox" id="rail-inbox" title="Inbox · 需要你介入">
+          <span class="rail-inbox-glyph">◔</span>
+          <span class="rail-inbox-badge" id="inbox-badge">0</span>
+        </button>
+        <button class="rail-settings" id="rail-settings" title="全局设置 · Teams / Souls / Providers / 记忆基座">⚙</button>
+      </div>
+    </nav>
+
+    <!-- Project 内导航（竖排 section）+ session 列表。Home 时隐藏 -->
+    <aside id="proj-nav" hidden></aside>
+
+    <!-- 工作区：Home 网格 / Chat 分屏 / 其它 section -->
+    <main id="work"><p class="loading">Loading…</p></main>
+  </div>
+
+  <!-- Inbox 抽屉 -->
+  <aside id="inbox-drawer" hidden></aside>
+  <div id="scrim" hidden></div>
+  <div id="prototype-switcher" aria-label="Pipeline 原型方案切换"></div>
+
+  <script src="data.js?v=1783872000"></script>
+  <script src="views.js?v=1783872000"></script>
+  <script src="app.js?v=1783872000"></script>
+</body>
+</html>

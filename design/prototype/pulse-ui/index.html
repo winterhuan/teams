@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PROTOTYPE · Hearth Board + Teams</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* fallback if CSS fails to load — light */
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f4f5f7; color: #1a1d26; }
+    #boot-error { display: none; margin: 24px; padding: 16px; border: 1px solid #e8b4b4; border-radius: 12px; background: #fdecec; color: #9b2c2c; white-space: pre-wrap; }
+    #boot-hint { padding: 12px 16px; background: #eef0f4; border-bottom: 1px solid #e2e5eb; color: #5c6578; font-size: 13px; }
+    #boot-hint code { color: #b87a3d; }
+  </style>
+</head>
+<body>
+  <div id="proto-banner">PROTOTYPE · Project × Team 壳变体 · throwaway</div>
+  <div id="boot-hint">
+    <code>http://127.0.0.1:8765/?variant=A</code>
+    · 底栏或 ← → 切换：
+    <b>A 队优先</b> /
+    <b>B 项目优先</b> /
+    <b>C 双轴矩阵</b>
+    · 勿用 file://
+  </div>
+  <div id="boot-error"></div>
+  <div id="app"><p style="padding:24px;color:#5c6578">Loading…</p></div>
+  <script>
+    window.addEventListener("error", function (e) {
+      var el = document.getElementById("boot-error");
+      if (!el) return;
+      el.style.display = "block";
+      el.textContent = "JS error: " + (e.message || e) + "\n" + (e.filename || "") + ":" + (e.lineno || "");
+    });
+  </script>
+  <script src="markdown.js"></script>
+  <script src="state.js"></script>
+  <script src="views.js"></script>
+  <script src="app.js"></script>
+  <script>
+    setTimeout(function () {
+      var app = document.getElementById("app");
+      if (app && app.innerHTML.indexOf("app-shell") === -1 && app.innerHTML.indexOf("Loading") !== -1) {
+        var el = document.getElementById("boot-error");
+        el.style.display = "block";
+        el.textContent =
+          "页面未渲染。请确认：\n1) 用 http://127.0.0.1:8765/ 打开（不是 file://）\n2) 终端已在 pulse-ui 目录运行 python3 -m http.server 8765\n3) 强制刷新 Cmd+Shift+R";
+      }
+    }, 800);
+  </script>
+</body>
+</html>
