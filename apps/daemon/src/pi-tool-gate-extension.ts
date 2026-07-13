@@ -1,5 +1,5 @@
-import { appendFileSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { appendFileSync, existsSync, realpathSync } from "node:fs";
+import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 function append(event: Record<string, unknown>): void {
@@ -15,9 +15,22 @@ function pathFromInput(input: unknown): string | null {
   return typeof path === "string" ? path.replace(/^@/, "") : null;
 }
 
-function inside(root: string, candidate: string): boolean {
-  const absolute = resolve(root, candidate);
-  const rel = relative(root, absolute);
+function canonicalPath(candidate: string): string {
+  const missing: string[] = [];
+  let existing = candidate;
+  while (!existsSync(existing)) {
+    const parent = dirname(existing);
+    if (parent === existing) break;
+    missing.unshift(basename(existing));
+    existing = parent;
+  }
+  return resolve(realpathSync(existing), ...missing);
+}
+
+export function isPathInsideWorkspace(root: string, candidate: string): boolean {
+  const canonicalRoot = realpathSync(root);
+  const canonicalCandidate = canonicalPath(resolve(root, candidate));
+  const rel = relative(canonicalRoot, canonicalCandidate);
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
@@ -33,7 +46,7 @@ export default function toolGate(pi: ExtensionAPI): void {
 
   pi.on("tool_call", (event, context) => {
     const requestedPath = pathFromInput(event.input);
-    if (requestedPath !== null && !inside(context.cwd, requestedPath)) {
+    if (requestedPath !== null && !isPathInsideWorkspace(context.cwd, requestedPath)) {
       append({
         type: "tool.denied",
         toolCallId: event.toolCallId,
