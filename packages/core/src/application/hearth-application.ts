@@ -8,11 +8,11 @@ import {
   ApplicationError,
   parseCreateProjectCommand,
   parseThreadSessionStartCommand,
+  type RunningProviderProcess,
   type ThreadSessionLaunchSpec,
 } from "./contracts.ts";
 import { createProjectFact } from "../domain/project.ts";
 import { SqliteProjectStore } from "../storage/sqlite-project-store.ts";
-import type { RunningProviderProcess } from "../provider/acpx-adapter.ts";
 
 function projectFingerprint(command: CreateProjectCommand): string {
   return createHash("sha256").update(JSON.stringify({

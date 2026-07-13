@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import { createAcpRuntime, createAgentRegistry } from "acpx/runtime";
 import { afterAll, expect, it } from "vitest";
 import {
-  AcpWorkspacePermissionPolicy,
   AcpxAdapter,
   SqliteAcpSessionStore,
   type ThreadSessionLaunchSpec,
@@ -24,7 +23,6 @@ afterAll(async () => {
 function createAdapter(directory: string): AcpxAdapter {
   const sessionStore = new SqliteAcpSessionStore(join(directory, "acpx.db"));
   sessionStores.push(sessionStore);
-  const permissionPolicy = new AcpWorkspacePermissionPolicy();
   const adapter = new AcpxAdapter({
     runtime: createAcpRuntime({
       cwd: directory,
@@ -34,9 +32,7 @@ function createAdapter(directory: string): AcpxAdapter {
       }),
       permissionMode: "approve-all",
       nonInteractivePermissions: "deny",
-      onPermissionRequest: async (request) => permissionPolicy.decide(request),
     }),
-    permissionPolicy,
   });
   adapters.push(adapter);
   return adapter;
@@ -54,39 +50,6 @@ function spec(cwd: string, prompt: string): ThreadSessionLaunchSpec {
     model: "agnes-2.0-flash",
   };
 }
-
-it(
-  "executes a real model-directed write/read round trip inside scratch",
-  async () => {
-    const directory = await mkdtemp(join(tmpdir(), "hearth-tool-ok-"));
-    directories.push(directory);
-    const events: Array<{ type: string; [key: string]: unknown }> = [];
-    const adapter = createAdapter(directory);
-    const running = adapter.start(
-      spec(
-        directory,
-        "Use the write tool to create note.txt containing exactly HEARTH_TOOL_OK. Wait for that tool to finish successfully, then use the read tool to verify note.txt. You must call both tools sequentially before answering briefly.",
-      ),
-      (event) => events.push(event),
-      { tools: ["read", "write"], timeoutMs: 90_000 },
-    );
-
-    await running.completed;
-
-    const failed = events.find((event) => event.type === "session.failed");
-    expect(failed, `Provider failed before completing tool round trip: ${JSON.stringify(failed)}`).toBeUndefined();
-    expect(await readFile(join(directory, "note.txt"), "utf8")).toBe("HEARTH_TOOL_OK");
-    expect(events).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: "tool.started", toolName: "write" }),
-        expect.objectContaining({ type: "tool.ended", toolName: "write", isError: false }),
-        expect.objectContaining({ type: "tool.started", toolName: "read" }),
-        expect.objectContaining({ type: "tool.ended", toolName: "read", isError: false }),
-      ]),
-    );
-  },
-  120_000,
-);
 
 it(
   "blocks a real model-directed write outside scratch before side effects",

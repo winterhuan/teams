@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { isAbsolute, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { createAcpRuntime, createAgentRegistry } from "acpx/runtime";
 import {
-  AcpWorkspacePermissionPolicy,
   AcpxAdapter,
   ApplicationError,
   SqliteAcpSessionStore,
@@ -19,6 +21,11 @@ function fail(error: unknown): never {
   const message = error instanceof Error ? error.message : "unknown error";
   process.stderr.write(`${JSON.stringify({ ok: false, error: { code, message } })}\n`);
   process.exit(1);
+}
+
+function inside(root: string, candidate: string): boolean {
+  const rel = relative(root, candidate);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
 try {
@@ -37,7 +44,6 @@ try {
     throw new ApplicationError("VALIDATION_ERROR", "--db is required");
   }
   const acpSessionStore = new SqliteAcpSessionStore(`${values.db}.acpx.db`);
-  const permissionPolicy = new AcpWorkspacePermissionPolicy();
   const piCommand = fileURLToPath(new URL("../bin/hearth-pi", import.meta.url));
   const acpRuntime = createAcpRuntime({
     cwd: process.cwd(),
@@ -47,17 +53,13 @@ try {
     }),
     permissionMode: "approve-all",
     nonInteractivePermissions: "deny",
-    onPermissionRequest: async (request) => permissionPolicy.decide(request),
   });
-  const pi = new AcpxAdapter({
-    runtime: acpRuntime,
-    agent: "pi",
-    permissionPolicy,
-  });
+  const acpxAdapter = new AcpxAdapter({ runtime: acpRuntime, agent: "pi" });
   const application = createHearthApplication({
     databasePath: values.db,
-    launchThreadSession: (spec, onEvent) => pi.start(spec, onEvent, {
+    launchThreadSession: (spec, onEvent) => acpxAdapter.start(spec, onEvent, {
       tools: ["read", "write"],
+      timeoutMs: 90_000,
     }),
   });
   try {
@@ -73,6 +75,11 @@ try {
         if (values["project-id"] === undefined || values.prompt === undefined || values.cwd === undefined) {
           throw new ApplicationError("VALIDATION_ERROR", "--project-id, --prompt and --cwd are required");
         }
+        const cwd = realpathSync(values.cwd);
+        const scratchRoot = realpathSync(process.env.HEARTH_SCRATCH_ROOT ?? tmpdir());
+        if (!inside(scratchRoot, cwd)) {
+          throw new ApplicationError("VALIDATION_ERROR", "--cwd must be inside the configured scratch root");
+        }
         const started = application.startThreadSession({
           type: "thread.session.start",
           idempotencyKey: values.json ?? `session-${Date.now()}`,
@@ -80,7 +87,7 @@ try {
           reason: "Start Thread Session from CLI",
           projectId: values["project-id"],
           prompt: values.prompt,
-          cwd: values.cwd,
+          cwd,
           budget: { maxTurns: 1 },
           route: { hearthProviderId: "pi", modelProvider: "agnes-ai", model: "agnes-2.0-flash" },
         });
@@ -119,7 +126,7 @@ try {
     }
   } finally {
     application.close();
-    await pi.close();
+    await acpxAdapter.close();
     acpSessionStore.close();
   }
 } catch (error) {

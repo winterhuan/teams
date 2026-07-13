@@ -110,7 +110,8 @@ it("cooperatively cancels the active acpx turn", async () => {
   const result = new Promise<{ status: "cancelled" }>((resolve) => { finish = resolve; });
   const fixture = runtimeWith([], result);
   const adapter = new AcpxAdapter({ runtime: fixture.runtime });
-  const running = adapter.start(spec(), () => {});
+  const received: Array<{ type: string; [key: string]: unknown }> = [];
+  const running = adapter.start(spec(), (event) => received.push(event));
 
   await vi.waitFor(() => expect(fixture.startTurn).toHaveBeenCalledOnce());
   running.cancel();
@@ -118,4 +119,40 @@ it("cooperatively cancels the active acpx turn", async () => {
   await running.completed;
 
   expect(fixture.cancel).toHaveBeenCalledOnce();
+  expect(received).toContainEqual(expect.objectContaining({ type: "session.cancelled" }));
+  expect(received).not.toContainEqual(expect.objectContaining({ type: "session.failed" }));
+});
+
+it("normalizes acpx timeout failures", async () => {
+  const fixture = runtimeWith([], Promise.resolve({
+    status: "failed",
+    error: { message: "ACP turn timed out", detailCode: "timeout" },
+  }));
+  const adapter = new AcpxAdapter({ runtime: fixture.runtime });
+  const received: Array<{ type: string; [key: string]: unknown }> = [];
+
+  await adapter.start(spec(), (event) => received.push(event), { timeoutMs: 12_345 }).completed;
+
+  expect(fixture.startTurn).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 12_345 }));
+  expect(received).toContainEqual(expect.objectContaining({
+    type: "session.failed",
+    reason: "timeout",
+  }));
+});
+
+it("preserves non-timeout provider failures", async () => {
+  const fixture = runtimeWith([], Promise.resolve({
+    status: "failed",
+    error: { message: "provider unavailable", code: "ACP_TURN_FAILED" },
+  }));
+  const adapter = new AcpxAdapter({ runtime: fixture.runtime });
+  const received: Array<{ type: string; [key: string]: unknown }> = [];
+
+  await adapter.start(spec(), (event) => received.push(event)).completed;
+
+  expect(received).toContainEqual(expect.objectContaining({
+    type: "session.failed",
+    reason: "provider_error",
+    code: "ACP_TURN_FAILED",
+  }));
 });

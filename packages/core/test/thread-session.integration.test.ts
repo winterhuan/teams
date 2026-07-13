@@ -175,6 +175,39 @@ describe("Thread Session through the public Daemon application seam", () => {
     );
   });
 
+  it("does not let a late Provider failure overwrite cancelled state", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "hearth-session-"));
+    directories.push(directory);
+    let emit!: (event: { type: string; at: string; [key: string]: unknown }) => void;
+    const application = createHearthApplication({
+      databasePath: join(directory, "hearth.db"),
+      launchThreadSession(_spec, onEvent) {
+        emit = onEvent;
+        return { completed: new Promise<void>(() => {}), cancel() {} };
+      },
+    });
+    applications.push(application);
+    const project = application.execute({
+      type: "project.create", idempotencyKey: "late-failure-p", actor: { type: "principal", id: "p" },
+      reason: "create", project: { name: "P" },
+    });
+    const started = application.startThreadSession({
+      type: "thread.session.start", idempotencyKey: "late-failure-s", actor: { type: "principal", id: "p" },
+      reason: "start", projectId: project.projectId, prompt: "hello", cwd: directory,
+      budget: { maxTurns: 1 }, route: { hearthProviderId: "pi", modelProvider: "agnes-ai", model: "agnes-2.0-flash" },
+    });
+
+    application.cancelSession(started.sessionId);
+    emit({
+      type: "session.failed",
+      at: new Date().toISOString(),
+      reason: "provider_error",
+      message: "late process error",
+    });
+
+    expect(application.getSessionHud(started.sessionId)?.status).toBe("cancelled");
+  });
+
   it("replays start without launching a second Provider", async () => {
     const directory = await mkdtemp(join(tmpdir(), "hearth-session-"));
     directories.push(directory);

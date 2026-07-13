@@ -311,10 +311,13 @@ export class SqliteProjectStore {
       const status = event.type === "session.running" ? "running"
         : event.type === "session.completed" ? "completed"
         : event.type === "session.failed" ? "failed"
+        : event.type === "session.cancelled" ? "cancelled"
         : null;
       if (status !== null) {
-        this.#database.prepare("UPDATE sessions SET status = ?, last_event_at = ? WHERE id = ?")
-          .run(status, event.at, sessionId);
+        this.#database.prepare(
+          `UPDATE sessions SET status = ?, last_event_at = ?
+           WHERE id = ? AND (status != 'cancelled' OR ? = 'cancelled')`,
+        ).run(status, event.at, sessionId, status);
       } else {
         this.#database.prepare("UPDATE sessions SET last_event_at = ? WHERE id = ?")
           .run(event.at, sessionId);

@@ -5,13 +5,10 @@ import type {
   AcpRuntimeTurn,
   AcpRuntimeUsageBreakdown,
 } from "acpx/runtime";
-import type { ThreadSessionLaunchSpec } from "../application/contracts.ts";
-import type { AcpWorkspacePermissionPolicy } from "./acp-workspace-permission-policy.ts";
-
-export interface RunningProviderProcess {
-  readonly completed: Promise<void>;
-  cancel(): void;
-}
+import type {
+  RunningProviderProcess,
+  ThreadSessionLaunchSpec,
+} from "../application/contracts.ts";
 
 export type NormalizedProviderEvent = Readonly<{
   type: string;
@@ -46,16 +43,9 @@ export class AcpxAdapter {
 
   readonly #handles = new Map<string, AcpRuntimeHandle>();
 
-  readonly #permissionPolicy: AcpWorkspacePermissionPolicy | undefined;
-
-  constructor(options: {
-    runtime: AcpRuntime;
-    agent?: string;
-    permissionPolicy?: AcpWorkspacePermissionPolicy;
-  }) {
+  constructor(options: { runtime: AcpRuntime; agent?: string }) {
     this.#runtime = options.runtime;
     this.#agent = options.agent ?? "pi";
-    this.#permissionPolicy = options.permissionPolicy;
   }
 
   start(
@@ -80,13 +70,6 @@ export class AcpxAdapter {
           },
         });
         this.#handles.set(handle.sessionKey, handle);
-        if (options.tools !== undefined) {
-          for (const sessionRef of [handle.backendSessionId, handle.agentSessionId]) {
-            if (sessionRef !== undefined) {
-              this.#permissionPolicy?.bind(sessionRef, { cwd: spec.cwd, tools: options.tools });
-            }
-          }
-        }
         onEvent({
           type: "session.provider_bound",
           at: now(),
@@ -122,16 +105,16 @@ export class AcpxAdapter {
           });
         } else if (result.status === "cancelled") {
           onEvent({
-            type: "session.failed",
+            type: "session.cancelled",
             at: now(),
-            reason: "cancelled",
-            message: "ACP turn was cancelled",
           });
         } else {
+          const timedOut = result.error.detailCode === "timeout"
+            || /timed? out|timeout/iu.test(result.error.message);
           onEvent({
             type: "session.failed",
             at: now(),
-            reason: "provider_error",
+            reason: timedOut ? "timeout" : "provider_error",
             message: result.error.message,
             code: result.error.code,
             detailCode: result.error.detailCode,
@@ -139,12 +122,15 @@ export class AcpxAdapter {
           });
         }
       } catch (error) {
-        onEvent({
-          type: "session.failed",
-          at: now(),
-          reason: cancelled ? "cancelled" : "provider_error",
-          message: error instanceof Error ? error.message : String(error),
-        });
+        if (cancelled) onEvent({ type: "session.cancelled", at: now() });
+        else {
+          onEvent({
+            type: "session.failed",
+            at: now(),
+            reason: "provider_error",
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     })();
 
@@ -161,10 +147,6 @@ export class AcpxAdapter {
   async close(): Promise<void> {
     const handles = [...this.#handles.values()];
     this.#handles.clear();
-    for (const handle of handles) {
-      if (handle.backendSessionId !== undefined) this.#permissionPolicy?.unbind(handle.backendSessionId);
-      if (handle.agentSessionId !== undefined) this.#permissionPolicy?.unbind(handle.agentSessionId);
-    }
     await Promise.all(handles.map((handle) => this.#runtime.close({
       handle,
       reason: "Hearth adapter shutdown",

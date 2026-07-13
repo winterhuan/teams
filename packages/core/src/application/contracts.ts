@@ -52,6 +52,11 @@ export type ThreadSessionLaunchSpec = Readonly<{
   model: "agnes-2.0-flash";
 }>;
 
+export interface RunningProviderProcess {
+  readonly completed: Promise<void>;
+  cancel(): void;
+}
+
 export type ThreadSessionStartResult = Readonly<{
   threadId: string;
   turnId: string;
