@@ -66,6 +66,7 @@ export type SessionHudReadModel = Readonly<{
   hearthProviderId: string;
   modelProvider: string;
   model: string;
+  providerSessionRef: string | null;
   cwd: string;
   budget: Readonly<{ maxTurns: number }>;
   lastEventAt: string;

@@ -1,10 +1,14 @@
 #!/usr/bin/env node
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { createAcpRuntime, createAgentRegistry } from "acpx/runtime";
 import {
+  AcpWorkspacePermissionPolicy,
+  AcpxAdapter,
   ApplicationError,
+  SqliteAcpSessionStore,
   createHearthApplication,
 } from "../../../packages/core/src/index.ts";
-import { PiAdapter } from "../../../packages/core/src/provider/pi-adapter.ts";
 
 function output(value: unknown): void {
   process.stdout.write(`${JSON.stringify({ ok: true, value })}\n`);
@@ -32,10 +36,29 @@ try {
   if (values.db === undefined) {
     throw new ApplicationError("VALIDATION_ERROR", "--db is required");
   }
-  const pi = new PiAdapter();
+  const acpSessionStore = new SqliteAcpSessionStore(`${values.db}.acpx.db`);
+  const permissionPolicy = new AcpWorkspacePermissionPolicy();
+  const piCommand = fileURLToPath(new URL("../bin/hearth-pi", import.meta.url));
+  const acpRuntime = createAcpRuntime({
+    cwd: process.cwd(),
+    sessionStore: acpSessionStore,
+    agentRegistry: createAgentRegistry({
+      overrides: { pi: `env PI_ACP_PI_COMMAND=${piCommand} npx -y pi-acp@0.0.31` },
+    }),
+    permissionMode: "approve-all",
+    nonInteractivePermissions: "deny",
+    onPermissionRequest: async (request) => permissionPolicy.decide(request),
+  });
+  const pi = new AcpxAdapter({
+    runtime: acpRuntime,
+    agent: "pi",
+    permissionPolicy,
+  });
   const application = createHearthApplication({
     databasePath: values.db,
-    launchThreadSession: (spec, onEvent) => pi.start(spec, onEvent),
+    launchThreadSession: (spec, onEvent) => pi.start(spec, onEvent, {
+      tools: ["read", "write"],
+    }),
   });
   try {
     const action = positionals[0];
@@ -96,6 +119,8 @@ try {
     }
   } finally {
     application.close();
+    await pi.close();
+    acpSessionStore.close();
   }
 } catch (error) {
   fail(error);

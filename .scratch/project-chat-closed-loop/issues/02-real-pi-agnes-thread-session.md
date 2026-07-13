@@ -41,3 +41,5 @@ Level 2：真实 Provider contract test，必须运行 `pi` + `agnes-ai/agnes-2.
 - 不以 throwaway prototype 或纯文档截图作为运行时闭环证据。
 
 ## Comments
+
+- 2026-07-13：首个 tracer bullet 已用 `pi --print --mode json` 验证真实 Pi + Agnes 文本响应，但该 transport 仅保留为一次性诊断/降级路径。正式 Session transport 从 Issue 03 起改用 `acpx/runtime` + Pi ACP；Hearth Session ID 作为 acpx session key，恢复记录写入 Hearth 管理的独立 runtime SQLite。

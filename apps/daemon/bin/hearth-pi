@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec pi \
+  --no-extensions \
+  --extension "$script_dir/../src/pi-tool-gate-extension.ts" \
+  --tools read,write \
+  --no-skills \
+  --no-prompt-templates \
+  --no-context-files \
+  "$@"

@@ -1,12 +1,25 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createAcpRuntime, createAgentRegistry } from "acpx/runtime";
 import { afterAll, expect, it } from "vitest";
-import { createHearthApplication } from "../src/index.ts";
-import { PiAdapter } from "../src/provider/pi-adapter.ts";
+import {
+  AcpxAdapter,
+  SqliteAcpSessionStore,
+  createHearthApplication,
+  type HearthApplication,
+} from "../src/index.ts";
 
 const directories: string[] = [];
+const applications: HearthApplication[] = [];
+const adapters: AcpxAdapter[] = [];
+const sessionStores: SqliteAcpSessionStore[] = [];
+const piCommand = fileURLToPath(new URL("../../../apps/daemon/bin/hearth-pi", import.meta.url));
 afterAll(async () => {
+  for (const application of applications) application.close();
+  for (const adapter of adapters) await adapter.close();
+  for (const sessionStore of sessionStores) sessionStore.close();
   for (const directory of directories) await rm(directory, { recursive: true, force: true });
 });
 
@@ -15,11 +28,25 @@ it(
   async () => {
     const directory = await mkdtemp(join(tmpdir(), "hearth-pi-agnes-"));
     directories.push(directory);
-    const adapter = new PiAdapter();
+    const sessionStore = new SqliteAcpSessionStore(join(directory, "acpx.db"));
+    sessionStores.push(sessionStore);
+    const adapter = new AcpxAdapter({
+      runtime: createAcpRuntime({
+        cwd: directory,
+        sessionStore,
+        agentRegistry: createAgentRegistry({
+          overrides: { pi: `env PI_ACP_PI_COMMAND=${piCommand} npx -y pi-acp@0.0.31` },
+        }),
+        permissionMode: "approve-all",
+        nonInteractivePermissions: "deny",
+      }),
+    });
+    adapters.push(adapter);
     const application = createHearthApplication({
       databasePath: join(directory, "hearth.db"),
       launchThreadSession: (spec, onEvent) => adapter.start(spec, onEvent),
     });
+    applications.push(application);
     const project = application.execute({
       type: "project.create",
       idempotencyKey: "real-pi-project",
@@ -53,6 +80,7 @@ it(
       hearthProviderId: "pi",
       modelProvider: "agnes-ai",
       model: "agnes-2.0-flash",
+      providerSessionRef: `hearth-session:${started.sessionId}`,
     });
     expect(events.some((event) => event.type === "session.running")).toBe(true);
     expect(events.some((event) => event.type === "assistant.delta")).toBe(true);
@@ -67,7 +95,6 @@ it(
       role: "assistant",
       text: expect.stringContaining("HEARTH_REAL_PI_OK"),
     });
-    application.close();
   },
   120_000,
 );

@@ -114,6 +114,37 @@ describe("Thread Session through the public Daemon application seam", () => {
     await application.waitForSession(started.sessionId);
   });
 
+  it("persists the acpx session reference for reconnecting clients", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "hearth-session-"));
+    directories.push(directory);
+    const databasePath = join(directory, "hearth.db");
+    const application = createHearthApplication({
+      databasePath,
+      launchThreadSession(_spec, onEvent) {
+        onEvent({
+          type: "session.provider_bound",
+          at: new Date().toISOString(),
+          providerSessionRef: "hearth-session:session-provider-ref",
+        });
+      },
+    });
+    applications.push(application);
+    const project = application.execute({
+      type: "project.create", idempotencyKey: "provider-ref-p", actor: { type: "principal", id: "p" },
+      reason: "create", project: { name: "P" },
+    });
+    const started = application.startThreadSession({
+      type: "thread.session.start", idempotencyKey: "provider-ref-s", actor: { type: "principal", id: "p" },
+      reason: "start", projectId: project.projectId, prompt: "hello", cwd: directory,
+      budget: { maxTurns: 1 }, route: { hearthProviderId: "pi", modelProvider: "agnes-ai", model: "agnes-2.0-flash" },
+    });
+
+    const reconnected = createHearthApplication({ databasePath });
+    applications.push(reconnected);
+    expect(reconnected.getSessionHud(started.sessionId)?.providerSessionRef)
+      .toBe("hearth-session:session-provider-ref");
+  });
+
   it("cancels the owned Provider process and records matching state", async () => {
     const directory = await mkdtemp(join(tmpdir(), "hearth-session-"));
     directories.push(directory);

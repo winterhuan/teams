@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   hearth_provider_id TEXT NOT NULL,
   model_provider TEXT NOT NULL,
   model TEXT NOT NULL,
+  provider_session_ref TEXT,
   cwd TEXT NOT NULL,
   budget_json TEXT NOT NULL CHECK(json_valid(budget_json)),
   last_event_at TEXT NOT NULL
@@ -102,7 +103,6 @@ CREATE TABLE IF NOT EXISTS session_events (
   event_at TEXT NOT NULL,
   payload_json TEXT NOT NULL CHECK(json_valid(payload_json))
 ) STRICT;
-PRAGMA user_version = 2;
 `;
 
 function parseJsonRecord(text: unknown): JsonRecord {
@@ -131,6 +131,11 @@ export class SqliteProjectStore {
     this.#database = new DatabaseSync(databasePath);
     this.#database.exec("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
     this.#database.exec(migration);
+    const sessionColumns = this.#database.prepare("PRAGMA table_info(sessions)").all() as JsonRecord[];
+    if (!sessionColumns.some((column) => column.name === "provider_session_ref")) {
+      this.#database.exec("ALTER TABLE sessions ADD COLUMN provider_session_ref TEXT;");
+    }
+    this.#database.exec("PRAGMA user_version = 3;");
   }
 
   close(): void {
@@ -314,6 +319,10 @@ export class SqliteProjectStore {
         this.#database.prepare("UPDATE sessions SET last_event_at = ? WHERE id = ?")
           .run(event.at, sessionId);
       }
+      if (event.type === "session.provider_bound" && typeof event.providerSessionRef === "string") {
+        this.#database.prepare("UPDATE sessions SET provider_session_ref = ? WHERE id = ?")
+          .run(event.providerSessionRef, sessionId);
+      }
       if (event.type === "assistant.delta" && typeof event.text === "string") {
         const row = this.#database.prepare("SELECT project_id, thread_id FROM sessions WHERE id = ?")
           .get(sessionId) as JsonRecord;
@@ -361,7 +370,7 @@ export class SqliteProjectStore {
   getSessionHud(sessionId: string) {
     const row = this.#database.prepare(
       `SELECT id, owner_type, thread_id, turn_id, status, hearth_provider_id,
-       model_provider, model, cwd, budget_json, last_event_at FROM sessions WHERE id = ?`,
+       model_provider, model, provider_session_ref, cwd, budget_json, last_event_at FROM sessions WHERE id = ?`,
     ).get(sessionId) as JsonRecord | undefined;
     if (row === undefined) return null;
     const budget = parseJsonRecord(row.budget_json);
@@ -372,6 +381,9 @@ export class SqliteProjectStore {
       hearthProviderId: requiredString(row, "hearth_provider_id"),
       modelProvider: requiredString(row, "model_provider"),
       model: requiredString(row, "model"),
+      providerSessionRef: row.provider_session_ref === null
+        ? null
+        : requiredString(row, "provider_session_ref"),
       cwd: requiredString(row, "cwd"),
       budget: { maxTurns: Number(budget.maxTurns) },
       lastEventAt: requiredString(row, "last_event_at"),
