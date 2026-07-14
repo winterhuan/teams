@@ -6,6 +6,7 @@ import type {
 } from "./contracts.ts";
 import {
   ApplicationError,
+  PI_AGNES_ACP_MODEL_ID,
   parseCreateProjectCommand,
   parseThreadSessionStartCommand,
   type RunningProviderProcess,
@@ -21,6 +22,20 @@ function projectFingerprint(command: CreateProjectCommand): string {
     reason: command.reason,
     project: { name: command.project.name, rootPath: command.project.rootPath ?? null },
   })).digest("hex");
+}
+
+/**
+ * Resolve the ACP model id Pi should be asked to load, from the Hearth ledger
+ * route. Decoupled from `modelProvider`/`model` (the ledger identity) on
+ * purpose: the ACP namespace belongs to the Pi adapter and can be renamed
+ * upstream. A config surface will later resolve this from the advertised
+ * `getStatus().models.availableModelIds`; today the single Agnes route pins it.
+ */
+function resolveAcpModelId(route: { modelProvider: string; model: string }): string {
+  if (route.modelProvider === "agnes-ai" && route.model === "agnes-2.0-flash") {
+    return PI_AGNES_ACP_MODEL_ID;
+  }
+  throw new ApplicationError("VALIDATION_ERROR", `no ACP model id for route ${route.modelProvider}/${route.model}`);
 }
 
 function threadSessionFingerprint(command: ReturnType<typeof parseThreadSessionStartCommand>): string {
@@ -133,6 +148,7 @@ export function createHearthApplication(options: {
           prompt: command.prompt,
           cwd: command.cwd,
           ...command.route,
+          acpModelId: resolveAcpModelId(command.route),
         },
         (event) => store.recordSessionEvent(sessionId, event),
       );

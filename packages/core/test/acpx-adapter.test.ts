@@ -19,6 +19,7 @@ function spec(): ThreadSessionLaunchSpec {
     hearthProviderId: "pi",
     modelProvider: "agnes-ai",
     model: "agnes-2.0-flash",
+    acpModelId: "agnes/agnes-2.0-flash",
   };
 }
 
@@ -87,7 +88,7 @@ it("maps an acpx turn into Hearth session and tool events", async () => {
     mode: "persistent",
     cwd: "/tmp/workspace",
     sessionOptions: {
-      model: "agnes-ai/agnes-2.0-flash",
+      model: "agnes/agnes-2.0-flash",
       allowedTools: ["read", "write"],
     },
   }));

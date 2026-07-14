@@ -14,10 +14,7 @@
     "noEmit": true,
     "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@earendil-works/pi-coding-agent": ["/Users/winter/.nvm/versions/node/v22.20.0/lib/node_modules/@earendil-works/pi-coding-agent/dist/index.d.ts"]
-    }
+    "skipLibCheck": true
   },
-  "include": ["apps/**/*.ts", "packages/**/*.ts"]
+  "include": ["apps/**/*.ts", "packages/**/*.ts", "scripts/**/*.ts"]
 }

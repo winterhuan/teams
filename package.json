@@ -10,16 +10,23 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "pnpm test:fast",
+    "test:fast": "vitest run --exclude '**/*.contract.test.ts' --exclude '**/process-smoke.test.ts'",
+    "test:watch": "vitest --exclude '**/*.contract.test.ts' --exclude '**/process-smoke.test.ts'",
+    "test:provider": "vitest run packages/core/test/pi-agnes.contract.test.ts packages/core/test/pi-model-route.contract.test.ts packages/core/test/codex-native.contract.test.ts packages/core/test/codex-agnes.contract.test.ts",
+    "test:system": "vitest run apps/daemon/test/process-smoke.test.ts",
+    "test:all": "pnpm test:fast && pnpm test:provider && pnpm test:system",
+    "issues:check": "node --experimental-strip-types --experimental-transform-types scripts/validate-issue-map.ts",
     "hearthd": "node --experimental-strip-types --experimental-transform-types apps/daemon/src/main.ts"
   },
   "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.80.6",
     "@types/node": "22.15.30",
     "typescript": "5.8.3",
     "vitest": "3.2.4"
   },
   "dependencies": {
-    "acpx": "0.12.0"
+    "acpx": "0.12.0",
+    "pi-acp": "0.0.31"
   }
 }

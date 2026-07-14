@@ -2,7 +2,8 @@
 
 Type: implementation
 Status: ready-for-agent
-Blocked by: 19, 26, 27, 29
+Progress: not-started
+Blocked by: 19, 26, 27, 29, 37
 PRD: [../PRD.md](../PRD.md)
 User stories: 16–19, 42, 44
 

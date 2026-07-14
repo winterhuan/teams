@@ -1,7 +1,6 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { createAcpRuntime, createAgentRegistry } from "acpx/runtime";
 import { afterAll, expect, it } from "vitest";
 import {
@@ -15,7 +14,6 @@ const directories: string[] = [];
 const applications: HearthApplication[] = [];
 const adapters: AcpxAdapter[] = [];
 const sessionStores: SqliteAcpSessionStore[] = [];
-const piCommand = fileURLToPath(new URL("../../../apps/daemon/bin/hearth-pi", import.meta.url));
 afterAll(async () => {
   for (const application of applications) application.close();
   for (const adapter of adapters) await adapter.close();
@@ -34,9 +32,7 @@ it(
       runtime: createAcpRuntime({
         cwd: directory,
         sessionStore,
-        agentRegistry: createAgentRegistry({
-          overrides: { pi: `env PI_ACP_PI_COMMAND=${piCommand} npx -y pi-acp@0.0.31` },
-        }),
+        agentRegistry: createAgentRegistry(),
         permissionMode: "approve-all",
         nonInteractivePermissions: "deny",
       }),

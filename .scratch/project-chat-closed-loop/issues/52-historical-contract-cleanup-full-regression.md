@@ -2,13 +2,14 @@
 
 Type: implementation
 Status: ready-for-agent
+Progress: not-started
 Blocked by: 50, 51
 PRD: [../PRD.md](../PRD.md)
-User stories: 1–3, 92, 105
+User stories: 92, 105
 
 ## 目标
 
-清除仍会误导实现的旧合同，执行全量领域、恢复、Provider 与浏览器回归并形成可复核完成报告。
+确认实施期间已持续清理的旧合同没有回归，执行全量领域、恢复、Provider 与浏览器回归并形成可复核完成报告；本 issue 不是把已知冲突留到最后再修的缓冲区。
 
 ## Tracer bullet
 

@@ -2,6 +2,7 @@
 
 Type: implementation
 Status: ready-for-agent
+Progress: not-started
 Blocked by: 10, 17
 PRD: [../PRD.md](../PRD.md)
 User stories: 34, 36–40

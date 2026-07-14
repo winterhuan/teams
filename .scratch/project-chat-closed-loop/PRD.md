@@ -1,6 +1,7 @@
 # Hearth Project Chat 完整闭环
 
 Status: ready-for-agent
+Progress: in-progress
 
 ## Problem Statement
 
@@ -175,21 +176,26 @@ Workspace 成为真正可执行、可恢复的沙箱对象，具备 owner、锁�
 - Provider ID is immutable after Session start. Changing Provider creates a new Session or Attempt.
 - Local-only privacy removes cloud Providers before resolution and fails closed when no local Provider remains.
 - Dangerous actions require a pre-side-effect gate. Adapters unable to enforce the gate cannot expose those actions.
-- Approval grant and deny use idempotency keys. Resume occurs exactly once and creates auditable events.
+- Approval grant and deny use idempotency keys. Hearth provides at-most-once resume dispatch from its ledger and requires an idempotency key or reconciliation contract at the external target; when a side effect may have happened but cannot be proven, recovery enters explicit attention instead of replaying blindly. The product must not claim universal exactly-once delivery to arbitrary external systems.
 - Daemon is the sole authority. Web and CLI consume its commands, events, and read models rather than talking directly to Provider processes.
 - The implementation must preserve the final object model from the first vertical slice. Temporary WorkItem objects and Thread pipeline modes are prohibited.
+- Production `hearthd` is a resident process that owns active Provider handles and exposes versioned command/query plus replayable event-subscription APIs. A one-command CLI process is a diagnostic client, not the production execution host.
+- The first production UI slice includes Project grid, Project-to-Chat default navigation, the seven stable Project sections, connection/reconnection state, and read-only placeholders backed by Daemon read models. Later issues fill those sections without creating a second state owner in the browser.
+- SQLite schema changes use ordered, transactional migrations with a checked `user_version`. Timeline events permit repeated event types, carry a per-object or per-stream ordering contract, and projections are rebuildable from durable facts.
+- Issue `Status` is triage/executor readiness. Delivery progress is recorded separately as `Progress: not-started | in-progress | completed`; dependencies unlock only from completed progress, never from the `ready-for-agent` label.
 
 ## Implementation Stack and Code Philosophy
 
 - The closed loop is TypeScript-first: production Daemon, CLI, domain/application modules, SQLite adapters, Provider adapters, Agnes compatibility bridge, and React Web UI use strict TypeScript on Node.js 22 LTS. pnpm is the workspace/package manager; Vite is preferred for Web; Vitest and Playwright cover domain/integration and critical browser paths.
 - The first implementation is a modular monolith with one authoritative `hearthd` composition root. Web, CLI, and tests use the same public application commands and queries; they do not talk directly to SQLite or Provider processes.
+- Provider transport reuses `acpx/runtime` (pinned `acpx@0.12.0`) rather than a Hearth-built transport abstraction. acpx owns ACP session lifecycle, child-process spawn, cancellation, timeout, and normalized events; `hearthd` owns Session/Thread/Approval/Artifact truth and normalizes acpx events into stable Hearth Session events. The rationale and the boundary are frozen in `docs/adr/0006-acpx-runtime-as-provider-transport.md`; the earlier self-built four-tier transport tiers (`acp | cli_json | cli_text | thin_drive`) are superseded.
 - SQLite is the only required durable database. Redis, Kafka, a remote database, and microservice decomposition are prohibited unless a later measured requirement and ADR justify them.
 - The implementation follows NanoClaw's useful principles without copying its product model: small enough to understand, host-owned durable truth, single writer by construction, isolation enforced by code and operating-system facilities rather than prompts, credentials retained by the host, and adapter growth constrained by conformance contracts.
-- Docker is not required, installed, or started by the Project Chat closed loop. Project, worktree, scratch, path policy, minimal child-process environments, Provider-native sandboxing, and Daemon pre-side-effect gates are the current controls. The product must not claim these controls provide container-equivalent isolation.
+- Docker is not required, installed, or started by the Project Chat closed loop. The initial closed loop deliberately ships no Provider-side isolation: no tool-surface allowlist, no path gate, no cwd sandbox, no minimal-env stripping. Sessions run the Provider with host privileges and the Agent can read and write anywhere on the machine. This is an explicit trade-off for a local single-user tool, prioritizing a working execution spine and ledger loop. Workspace path policy, Provider-native sandboxing, and Daemon pre-side-effect gates are planned governance for later issues (path/policy gate, Posting autonomy, Approval), not controls that exist today. The product must not claim any current control provides OS-enforced or container-equivalent isolation.
 - `hearthd` owns transactions, policy, scheduling, approvals, Workspace and Provider lifecycle, and read models, but does not reimplement every Provider's internal agent loop. Provider-private protocol details stay behind the Provider adapter seam.
 - Interfaces are deliberately deep and few. A public adapter seam is introduced only where at least two real implementations exist or where an external process protocol requires it. Domain nouns must not mechanically become packages or pass-through services.
 - Provider credentials are read by a host-side credential broker or supported native authentication. Raw keys never enter domain events, transcripts, Workspace files, Artifact content, command-line arguments, or persisted child-process environment snapshots.
-- Codex-to-Agnes testing uses a narrow host-side Responses-to-Chat compatibility bridge because Codex CLI requires the Responses protocol while Agnes currently succeeds through Chat Completions. The bridge must cover streaming, tools, tool results, usage, cancellation, and errors; a text-only translator is not accepted.
+- Codex CLI itself is reached through the `acpx/runtime` built-in `codex` agent, the same transport seam as Pi (ADR 006); only its model route needs a bridge. Codex-to-Agnes testing uses a narrow host-side Responses-to-Chat compatibility bridge because Codex CLI requires the Responses protocol while Agnes currently succeeds through Chat Completions. That bridge is independent of acpx (acpx handles the ACP session, not Agnes). The bridge must cover streaming, tools, tool results, usage, cancellation, and errors; a text-only translator is not accepted.
 - Real Provider validation preserves two matrices: same model/different harness (`Pi + Agnes` and `Codex CLI + bridge + Agnes`) and different model/different harness (`Pi + Agnes` and `Codex CLI + a native Codex-route model`). Only the latter is described as cross-model review.
 - Rust, Go, Python, native addons, or sidecars may be introduced only after profiling demonstrates a concrete Node.js limitation and a separate ADR defines the narrow seam. Domain state machines and read models must not be duplicated across languages.
 - The detailed rationale and constraints are frozen in `docs/adr/0005-typescript-first-small-host-nanoclaw-principles.md`.
@@ -200,21 +206,22 @@ Workspace 成为真正可执行、可恢复的沙箱对象，具备 owner、锁�
 - Good tests assert externally visible behavior, durable state, emitted events, idempotency, authorization, and recovery. They do not assert internal function calls, private class shape, SQL query order, component internals, or exact incidental HTML.
 - Domain integration tests cover Project, Member, TeamMembership, Posting, Issue, Thread, WorkflowDefinition, WorkflowRun, Step, Attempt, Session, Claim, Workspace, Artifact, Approval, Acceptance, Comment, Timeline, and Inbox through public commands.
 - Read-model tests use the same domain scenario to assert Chat, Board, Runs, Artifacts, Workspace, Team, Live HUD, and Inbox projections. Each projection must agree on identifiers and provenance.
-- A primary coding scenario covers: enter Project, create Todo Issue, atomic Claim, create or bind main Thread, start a writer Session, publish a version, hand over to a different-model verifier Session, create a Run, execute AI and Command Steps, stop at Approval, grant exactly once, publish the reviewed version, move Issue to In Review, bind Acceptance evidence, and complete Review.
+- A primary coding scenario covers: enter Project, create Todo Issue, atomic Claim, create or bind main Thread, start a writer Session, publish a version, hand over to a different-model verifier Session, create a Run, execute AI and Command Steps, stop at Approval, grant idempotently, dispatch at most once, reconcile the target result, publish the reviewed version, move Issue to In Review, bind Acceptance evidence, and complete Review.
 - A primary creative scenario covers: direct Thread, multiple Soul handoffs, Reader or Player Artifact, append-only versions, unseen Inbox event, fixed-version Review, export, and Issue creation from the Thread when commitment becomes explicit.
 - Claim tests cover duplicate scheduler ticks, manual-versus-automatic races, concurrency exhaustion, lease or heartbeat expiry, Daemon restart, process still alive, process missing, retry backoff, and release.
 - Issue tests prove that Provider failure, Claim failure, Session failure, Run failure, and Approval wait do not mutate Issue.status without a tracker command.
 - Session tests prove owner exclusivity, immutable Provider, isolated transcripts, bounded handover context, cancellation, detach, resume, stall detection, retry, and cost attribution.
 - Workflow tests cover Definition version pinning, assignment snapshots, dependency unlocking, parallel-ready Steps, AI/Command/Approval behavior, Attempt retries, deny, cancel, reassigning unexecuted Steps, and fork or re-plan after executed work.
-- Approval tests cover double grant, repeated API delivery, grant after deny, resume crash, and restart recovery to demonstrate exactly-once side effects.
+- Approval tests cover double grant, repeated API delivery, grant after deny, resume crash, restart recovery, target idempotency, and unknown-result attention to demonstrate at-most-once dispatch without blind replay.
 - Workspace tests cover dirty roots, lock contention, policy violations, worktree creation, fresh retry Workspaces, prepare/verify/apply, verification failure, merge conflict, cleanup, archive, and Artifact readability after archive.
 - Artifact tests cover explicit create, stable publish-key idempotency, rejection of title-only auto-merge, version append, immutable Review evidence, provenance from both Session owner variants, preview fallback, export, unseen, and deletion independence.
 - Posting tests cover one global Member in multiple Teams, Project-specific overrides, duplicate Posting prevention, explicit source Team choice, and permission composition.
 - Fault injection targets the existing transactional seams: Provider start, Session exit, Claim journal commit, Artifact append, Approval resume, Workspace merge, Run StepResult commit, and Daemon restart.
 - Browser smoke tests cover only four critical paths: Project to Chat and inspector behavior; Board Issue to automatic Claim and main Thread; Run Steps or Graph with Approval; Artifact fixed-version Review and Inbox clearing.
+- Test commands are intentionally layered: `pnpm test` / `test:fast` are deterministic and offline; `test:provider` explicitly runs real Pi/Codex/Agnes contracts; `test:system` runs process/browser system paths; `test:all` is the milestone gate. Provider suites are never part of the default watch loop and must report authentication, network, quota, and upstream model drift separately from product regressions.
 - Existing prior art is the Project Chat throwaway prototype: Project-first navigation, Chat and Run separation, Steps and Graph views, Gate interaction, and the OAuth scenario. It is treated as interaction prior art, not as proof of runtime correctness.
 - Historical designs remain documentation fixtures only. Tests must target the current domain glossary and the latest ADR decisions.
-- Completion evidence requires all domain integration suites, recovery and idempotency suites, and critical browser smoke tests to pass, plus a manual trace showing one coding and one creative closed loop from Project entry to reviewed Artifact.
+- Completion evidence requires `pnpm test:all`, all recovery and idempotency suites, and critical browser smoke tests to pass, plus a manual trace showing one coding and one creative closed loop from Project entry to reviewed Artifact.
 
 ## Out of Scope
 
@@ -240,6 +247,7 @@ Workspace 成为真正可执行、可恢复的沙箱对象，具备 owner、锁�
 ## Further Notes
 
 - The Project-centered, chat-first IA is considered settled. The work now is implementation-contract convergence and vertical-loop delivery, not another top-level navigation redesign.
+- Contradictory active documentation is fixed before the dependent implementation begins. Issue 52 performs the final regression/search gate; it is not permission to leave known obsolete contracts in force until the end.
 - The OAuth prototype scenario remains the primary coding reference because it naturally includes writer/verifier separation, a Command Step, CSRF correction, hard approval, Artifact publication, and Review.
 - The design corrections are recorded in the current convergence ADR. Where older main-axis prose conflicts with the domain glossary or newer ADRs, the glossary and ADRs take precedence until historical sections are fully rewritten.
 - “负责人” must be qualified by context in implementation and UI: Issue assignee, Thread responsible Soul, Step owner, and Claim owner are distinct concepts. They may be displayed together but must never be stored as one overloaded field.

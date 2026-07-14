@@ -41,15 +41,43 @@ export type ProjectDetailReadModel = Readonly<{
   defaultSection: "chat";
 }>;
 
+/**
+ * ACP model id Pi advertises for the Agnes route. This is Pi adapter's own
+ * model namespace (`getStatus().models.availableModelIds`), NOT the Hearth
+ * ledger identity. Kept distinct from `modelProvider`/`model` so an upstream
+ * prefix rename cannot break session launch. A config surface will later let
+ * the user pick from the advertised list; tests pin this constant.
+ */
+export const PI_AGNES_ACP_MODEL_ID = "agnes/agnes-2.0-flash";
+
+/**
+ * A Codex-advertised native ACP model id. Codex-acp exposes GPT-5 models
+ * through the same acpx seam as Pi (`getStatus().models.availableModelIds`),
+ * so the Codex native route needs no bridge at the transport layer. Pinned
+ * here for the Codex contract test; a config surface will later let the user
+ * pick from the advertised list.
+ */
+export const CODEX_NATIVE_ACP_MODEL_ID = "gpt-5.5[high]";
+
+/**
+ * Internal adapter launch contract. `hearthProviderId` / `modelProvider` /
+ * `model` are ledger identity strings, and `acpModelId` is the adapter's own
+ * ACP model namespace (decoupled — see PI_AGNES_ACP_MODEL_ID). These are
+ * deliberately widened to `string` so both real adapters (Pi and Codex) can
+ * be launched through the same seam. The PUBLIC `thread.session.start` command
+ * stays pi-locked in `parseThreadSessionStartCommand`; general Provider
+ * selection is owned by issue 06.
+ */
 export type ThreadSessionLaunchSpec = Readonly<{
   sessionId: string;
   threadId: string;
   turnId: string;
   prompt: string;
   cwd: string;
-  hearthProviderId: "pi";
-  modelProvider: "agnes-ai";
-  model: "agnes-2.0-flash";
+  hearthProviderId: string;
+  modelProvider: string;
+  model: string;
+  acpModelId: string;
 }>;
 
 export interface RunningProviderProcess {

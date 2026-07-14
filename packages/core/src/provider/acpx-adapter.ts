@@ -65,7 +65,7 @@ export class AcpxAdapter {
           mode: "persistent",
           cwd: spec.cwd,
           sessionOptions: {
-            model: `${spec.modelProvider}/${spec.model}`,
+            model: spec.acpModelId,
             ...(options.tools === undefined ? {} : { allowedTools: [...options.tools] }),
           },
         });

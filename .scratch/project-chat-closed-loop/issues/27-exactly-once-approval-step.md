@@ -1,14 +1,15 @@
-# 27. 执行 exactly-once Approval Step
+# 27. 执行幂等 Approval Step 与 at-most-once resume dispatch
 
 Type: implementation
 Status: ready-for-agent
+Progress: not-started
 Blocked by: 25
 PRD: [../PRD.md](../PRD.md)
 User stories: 47–50, 85
 
 ## 目标
 
-在副作用前暂停，并让 Run、Chat、Inbox 投影同一个可幂等 grant/deny 的 Approval。
+在副作用前暂停，并让 Run、Chat、Inbox 投影同一个可幂等 grant/deny 的 Approval；Hearth 保证 resume dispatch 至多一次，外部目标通过幂等键或 reconciliation 收敛。
 
 ## Tracer bullet
 
@@ -17,16 +18,16 @@ User stories: 47–50, 85
 ## 范围
 
 - Approval 具有稳定 ID、scope、风险摘要、请求者、目标副作用与状态
-- grant/deny 使用幂等键；deny 后不可 grant；grant 后 resume exactly once
+- grant/deny 使用幂等键；deny 后不可 grant；grant 后从 Hearth ledger at-most-once dispatch
 - 无 pre-tool gate 的适配器不能暴露危险 capability
-- 崩溃发生在 grant 与 resume 之间时可恢复，不重复副作用
+- 外部动作必须声明幂等键、状态查询或人工 reconciliation 合同；无法证明结果时进入 attention，不盲目重放
 
 ## 验收标准
 
 - [ ] 双击、重复 API delivery、并发 grant 只恢复一次
 - [ ] Run/Chat/Inbox 操作的是同一 Approval ID
 - [ ] deny 保留审计并使 Step 按策略结束
-- [ ] 受控副作用计数器证明 crash recovery exactly once
+- [ ] 受控副作用计数器证明 Hearth dispatch 至多一次；目标幂等重放只产生一个业务结果
 
 ## 验证要求
 

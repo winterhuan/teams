@@ -1,8 +1,11 @@
 # Project Chat 完整闭环：Issue Map
 
 Status: ready-for-agent
+Progress: in-progress
 
-本目录将 [PRD](../PRD.md) 拆为 52 个可领取的 tracer-bullet issues。编号表达推荐交付顺序；每张 issue 的 `Blocked by` 才是实际依赖合同。所有运行能力从第一刀起使用最终对象模型。
+本目录将 [PRD](../PRD.md) 拆为 52 个 tracer-bullet issues。编号只表达大致领域顺序；`Blocked by` 与 Foundation Gate 才是实际依赖合同。`Status` 表达规格是否适合对应执行者，`Progress` 表达 `not-started | in-progress | completed`；只有 `Progress: completed` 才能解锁依赖。所有运行能力从第一刀起使用最终对象模型。
+
+当前实施中的 01–03 与 05 是历史上已开始但尚未满足重排后完整合同的工作；04 仍为 `not-started`。在 Foundation Gate A 完成前，不再继续开启新的下游领域 issue。
 
 ## Provider 验收合同
 
@@ -15,7 +18,7 @@ Fake Provider 不能充当 Level 2–4 的完成证据。Hearth Provider（Pi/Co
 
 ## Issues
 
-- [01. 建立 Daemon 命令、事件日志与 Project 读模型 seam](01-daemon-command-event-read-model-seam.md) — Blocked by: 无；Stories: 92–93, 101–102
+- [01. 建立可演进 Daemon 命令、事件日志、Project 读模型与 Web shell seam](01-daemon-command-event-read-model-seam.md) — Blocked by: 无；Stories: 1–3, 92–93, 101–102
 - [02. 用真实 Pi + Agnes 启动首个 Thread Session](02-real-pi-agnes-thread-session.md) — Blocked by: 01；Stories: 5, 29, 33, 58, 61–62
 - [03. 让真实 Pi Session 执行结构化工具调用](03-real-pi-tool-calls.md) — Blocked by: 02；Stories: 30, 33, 48–49, 61
 - [04. 建立 Provider Registry、Model Route 与健康状态](04-provider-registry-model-route-health.md) — Blocked by: 02；Stories: 58–61, 92
@@ -41,10 +44,10 @@ Fake Provider 不能充当 Level 2–4 的完成证据。Hearth Provider（Pi/Co
 - [24. 从 Issue 直接启动 WorkflowRun](24-issue-direct-workflow-run.md) — Blocked by: 17, 21；Stories: 7, 16, 34, 36
 - [25. 执行真实 AI Step 与 StepResult](25-real-ai-step-attempt-result.md) — Blocked by: 22；Stories: 37–42, 58, 61–62
 - [26. 执行真实 Command Step](26-deterministic-command-step.md) — Blocked by: 25；Stories: 40–42, 69
-- [27. 执行 exactly-once Approval Step](27-exactly-once-approval-step.md) — Blocked by: 25；Stories: 47–50, 85
+- [27. 执行幂等 Approval Step 与 at-most-once resume dispatch](27-exactly-once-approval-step.md) — Blocked by: 25；Stories: 47–50, 85
 - [28. 支持 Attempt retry 与 Provider 改派](28-attempt-retry-provider-reassignment.md) — Blocked by: 05, 25；Stories: 32, 38–41, 58, 60
 - [29. 完成 Runs Steps、Graph、Discussion 与 Logs 交互](29-runs-steps-graph-discussion-logs.md) — Blocked by: 23, 25, 26, 27, 28；Stories: 43–46, 50, 61
-- [30. 完成 Workflow Closeout 与 Issue Review 交接](30-workflow-closeout-issue-review-handoff.md) — Blocked by: 19, 26, 27, 29；Stories: 16–19, 42, 44
+- [30. 完成 Workflow Closeout 与 Issue Review 交接](30-workflow-closeout-issue-review-handoff.md) — Blocked by: 19, 26, 27, 29, 37；Stories: 16–19, 42, 44
 - [31. Thread Session 直接 Project Workspace 单写者闭环](31-thread-project-workspace-single-writer.md) — Blocked by: 03, 12；Stories: 63, 67, 72
 - [32. Workflow Attempt worktree 获取闭环](32-workflow-attempt-worktree-acquisition.md) — Blocked by: 25, 31；Stories: 64–67, 72
 - [33. Workspace 路径策略与越界硬门](33-workspace-path-policy-hard-gate.md) — Blocked by: 31, 32；Stories: 67–68
@@ -63,12 +66,20 @@ Fake Provider 不能充当 Level 2–4 的完成证据。Hearth Provider（Pi/Co
 - [46. Session stall 与真实 Provider retry](46-session-stall-retry-diagnostics.md) — Blocked by: 16, 28, 45；Stories: 10–11, 31–33, 90, 103
 - [47. Claim 重启重建与底层进程核验](47-claim-restart-process-reconciliation.md) — Blocked by: 18, 46；Stories: 94–97, 103
 - [48. WorkflowRun 重启恢复](48-workflow-run-restart-recovery.md) — Blocked by: 25, 26, 28, 47；Stories: 37, 41–42, 46–47, 94, 97, 103
-- [49. Approval resume 崩溃恢复](49-approval-resume-crash-recovery.md) — Blocked by: 27, 48；Stories: 47–50, 85, 97, 103
+- [49. Approval resume 崩溃 reconciliation](49-approval-resume-crash-recovery.md) — Blocked by: 27, 48；Stories: 47–50, 85, 97, 103
 - [50. OAuth 编码场景端到端验收](50-oauth-coding-end-to-end.md) — Blocked by: 14, 19, 30, 34, 38, 44, 47, 48, 49；Stories: 18, 22–24, 34–50, 58–70, 73–77, 85, 90, 94–99, 101–104
-- [51. 创作场景端到端验收](51-creative-work-end-to-end.md) — Blocked by: 08, 13, 36, 38, 39, 40, 42, 43, 44, 45；Stories: 5–6, 18, 22–30, 71, 73–87, 98, 100–104
-- [52. 历史合同清理与完整回归](52-historical-contract-cleanup-full-regression.md) — Blocked by: 50, 51；Stories: 1–3, 92, 105
+- [51. 创作场景端到端验收](51-creative-work-end-to-end.md) — Blocked by: 08, 13, 15, 36, 38, 43, 44, 45；Stories: 5–6, 18, 22–30, 71, 73–87, 98, 100–104
+- [52. 历史合同清理与完整回归](52-historical-contract-cleanup-full-regression.md) — Blocked by: 50, 51；Stories: 92, 105
 
-## 里程碑
+## Foundation Gates
+
+- **Gate A — 可演进宿主：** 01 的 migration/event/projection/Web shell 与 02 的常驻 Daemon/事件重连必须完成；03 的真实工具 trace 必须与现行无沙箱边界一致。Gate A 未完成时，只允许修复 01–05 的既有 WIP。
+- **Gate B — 可解释执行：** 04–19 完成 Provider registry、双 Provider、Posting、可靠 wake-up、Team 隔离、Issue 与 Claim；安全策略必须在 Pi/Codex 两条真实路径证明副作用前强制点。
+- **Gate C — Reader-only 薄闭环：** 21–38 优先完成 AI/Command/Approval、Workspace、Reader Artifact 与固定版本 Review；不等待 Gallery、Player、Data View 才验证第一条端到端因果链。
+- **Gate D — 扩展与恢复：** 39–49 增加其他 medium、unseen/export、Session/Claim/Run/Approval 恢复；Approval 使用 at-most-once dispatch + target idempotency/reconciliation，不宣称任意外部系统 exactly-once。
+- **Gate E — 系统关闭：** 50–52 执行 OAuth、Reader-first 创作场景、全量回归和历史合同搜索。图片、音频、数据配套在 51 中保持可选，由各自 issue 独立验收。
+
+## 领域里程碑
 
 - **01–08：** 最小真实执行脊与双 Provider。
 - **09–16：** Soul、Team、Posting 与交互隔离。

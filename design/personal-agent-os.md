@@ -1391,25 +1391,25 @@ deny:
   Approval → denied
   默认:
     Session.loop 保持 paused；清 pending_approval_id
-    Claim 保持 Blocked；关联 Issue 可保持 blocked；Timeline reason=approval_denied
+    Claim 进入 blocked attention；关联 Issue.status 保持不变；Timeline reason=approval_denied
     待人 cancel / 改目标 / nudge；再次请求同一 L0 动作须创建新 Approval
 ```
 
 **Resume 幂等契约（M0.2.15；LangGraph 「resume 重跑整节点」告警）：**
 
-> LangGraph 的核心陷阱：`interrupt()` resume 时**重跑整个 node**，节点须幂等。Hearth 的 L0 授权粒度是「**一次特定副作用**」，grant 后该动作须 **exactly-once** 执行。
+> LangGraph 的核心陷阱：`interrupt()` resume 时**重跑整个 node**，节点须幂等。Hearth 的 L0 授权粒度是「**一次特定副作用意图**」：grant 决策幂等，Hearth resume dispatch 至多一次；外部目标必须提供幂等键、状态查询或人工 reconciliation。
 
 | transport 门型 | grant 后语义 | 契约 |
 |----------------|--------------|------|
-| `pre_tool_gate=true`（同步门） | Provider 阻塞在该 tool 前等放行 → 放行即执行一次 | 天然 exactly-once |
+| `pre_tool_gate=true`（同步门） | Provider 阻塞在该 tool 前等放行 → Hearth 放行一次 | at-most-once dispatch；目标结果仍须可核验 |
 | 等价强制门（wrapper/proxy） | Adapter 缓存被拦截的调用；grant → 执行**该缓存调用一次**，不回放整轮 | Adapter 保证不重放 |
 | `thin_drive` / 事后事件 | 外驱下一 user 可能导致模型**重新决定/重发**该动作 | **approval-unsafe**：见下 |
 
 **不变量：**
 
-1. Adapter 必须保证:一个 `Approval.id` 对应的 L0 动作 grant 后 **恰好执行一次**;不得因 resume 重放整轮而重复副作用,也不得跳过。  
-2. 无法保证 exactly-once 的 transport 在 [`annex/providers.md`](./annex/providers.md) 标注为 **approval-unsafe**;此类 Provider **不得**暴露映射为 L0 的工具(与「无同步门则禁用该 tool」§6.4.5 同一处置)。  
-3. Approval 记录冗余 `action_call_ref`（关联被拦截的具体调用），供 Adapter 定位「放行哪一次」，杜绝「放行后重发另一次」。
+1. Adapter 必须保证一个 `Approval.id` 对应的 L0 动作在 Hearth 侧 **至多 dispatch 一次**，不得因 resume 重放整轮而重复派发。  
+2. 外部目标必须支持 idempotency key、结果查询或明确的人工 reconciliation；无法提供副作用前强制门的 transport 标为 **approval-unsafe**，不得暴露映射为 L0 的工具。  
+3. Approval 记录 `action_call_ref`、dispatch token 与 target idempotency key。崩溃后无法证明目标结果时进入 attention，不以“可能没执行”为由盲目重放。
 
 ### 6.11 记忆与学习（摘要）
 

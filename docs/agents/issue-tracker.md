@@ -8,7 +8,10 @@ Issues and PRDs for this repo live as markdown files in `.scratch/`.
 - The PRD is `.scratch/<feature-slug>/PRD.md`
 - Implementation issues are `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
+- Delivery progress is recorded separately as `Progress: not-started | in-progress | completed`. `Status` answers whether an issue is specified for the right executor; `Progress` answers whether its acceptance contract has been delivered.
+- `Blocked by` is resolved only when every referenced issue has `Progress: completed`; a `ready-for-agent` issue may still be dependency-blocked.
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
+- Run `pnpm issues:check` after changing the closed-loop map. It validates contiguous issue IDs, metadata cardinality, dependency references/cycles, and coverage of all 105 PRD User Stories.
 
 ## When a skill says "publish to the issue tracker"
 
